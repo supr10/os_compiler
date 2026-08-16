@@ -27,7 +27,7 @@ static bool generate_compilation_file(char* filename) {                    //SO-
 
 
 static int get_required_user_action(int argc, char** argv) {
-    return 0;
+    return 1;
 }
 
 
