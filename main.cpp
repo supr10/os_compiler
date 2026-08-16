@@ -26,13 +26,17 @@ static bool generate_compilation_file(char* filename) {                    //SO-
 }
 
 
-static int get_required_user_action(int argc, char** argv) {
-    return 1;
+static int get_user_action(int argc, char** argv) {
+    if (argc==1) {
+        return 0;               // no argument selected
+    }if (argv[1]=="--version"||argv[1]=="-v") {
+        return 1;
+    }
 }
 
 
 int main(int argc, char** argv) {
-    int choice = get_required_user_action(argc, argv);
+    int choice = get_user_action(argc, argv);
     switch (choice) {
         case 0:
         case 1:
