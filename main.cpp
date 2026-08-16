@@ -15,7 +15,7 @@ static char logo[] = "the\n"
     "| | | \\___ \\ \n"
     "| |_| |___) |\n"
     " \\___/|____/ compiler";
-
+ 
 static bool generate_compilation_file(char* filename) {                    //SO-Compiler uses nasm, later, it could use other things
     std::ofstream cfile("./compile.bat");
     cfile<<"nasm -f BIN "<<filename<<" -o ./output.bin"<<std::endl;
