@@ -9,6 +9,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+
 
 #define TO_CHAR(x) static_cast<char>(x)
 
@@ -23,15 +25,42 @@ static char logo[] = "the\n"
 static double version = 0.01;
 static char build_type[] = "alpha";
 
+void invalidate(char* out) {
+    //filling the whole out with zeroes
+    for (int i = 0;i<511;i++) {
+        out[i] = 0x00;
+    }
+}
+
 //The compile function transforms the source code (basic-type language) into a hex array
-void compile(char* out, const std::string& source) {            //assumes the out parameter is 512 bytes long
+static void compile(char* out, const std::vector<std::string>& opList) {            //assumes the out parameter is 512 bytes long
     if constexpr (sizeof(out)!=512) {
         std::cerr<<"out array too long"<<std::endl;
     }
-    //filling the whole out with zeroes
-    for (int i = 0;i<509;i++) {
-        out[i] = 0x00;
+
+    invalidate(out);       //making sure the file is 512 bytes
+
+    int caddr = 0;          //current address for writing in output file
+    int spf = 0;           //special operation flag, allows to treat operands as arguments instead of operations
+    for (const auto& op : opList) {
+        switch (spf) {
+            case 1:         //printchar
+                out[caddr++] = TO_CHAR(0xB4);
+                out[caddr++] = TO_CHAR(0x0E);       //mov ah 0x0E
+                out[caddr++] = TO_CHAR(0xB0);
+                out[caddr++] = TO_CHAR(op[0]);      //mov al op[0]
+                out[caddr++] = TO_CHAR(0xCD);
+                out[caddr++] = TO_CHAR(0x10);       //int 0x10
+                spf = 0;
+                break;
+            default: break; //used when spf = 0
+        }
+        if (op=="printchar"||op=="PRINTCHAR") {
+            spf = 1;
+        }
     }
+
+
     //operating systems must end with signature 0x55AA
     out[510] = TO_CHAR(0x55);
     out[511] = TO_CHAR(0xAA);
@@ -50,9 +79,12 @@ static int get_user_action(const int argc, char** argv) {
 }
 
 
-static std::string get_source_from_file(std::ifstream* input_file) {
-    std::string source;
-    source.assign(std::istreambuf_iterator(*input_file),std::istreambuf_iterator<char>());
+static std::vector<std::string> get_source_from_file(std::ifstream* input_file) {
+    std::vector<std::string> source;
+    std::string word;
+    while (*input_file>>word) {
+        source.push_back(word);
+    }
     return source;
 }
 
@@ -71,7 +103,7 @@ int main(const int argc, char** argv) {
         case 2: {
             std::ofstream output("out.bin", std::ios::binary);
             std::ifstream input(argv[1]);
-            std::string source = get_source_from_file(&input);
+            auto source = get_source_from_file(&input);
             char out_hex[512];
             compile(out_hex, source);
             write_hex_file(&output, out_hex);
