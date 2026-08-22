@@ -10,7 +10,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-
+#include <stdint.h>
 
 #define TO_CHAR(x) static_cast<char>(x)
 
@@ -22,13 +22,14 @@ static char logo[] = "the\n"
     " \\___/|____/ compiler";
 
 
-static double version = 0.01;
-static char build_type[] = "alpha";
+static constexpr double version = 0.01;
+static constexpr char build_type[] = "alpha";
+
 
 void invalidate(char* out) {
     //filling the whole out with zeroes
     for (int i = 0;i<511;i++) {
-        out[i] = 0x00;
+        out[i] = TO_CHAR(0x00);
     }
 }
 
@@ -42,6 +43,7 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
 
     int caddr = 0;          //current address for writing in output file
     int spf = 0;           //special operation flag, allows to treat operands as arguments instead of operations
+
     for (const auto& op : opList) {
         switch (spf) {
             case 1:         //printchar
@@ -50,13 +52,23 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
                 out[caddr++] = TO_CHAR(0xB0);
                 out[caddr++] = TO_CHAR(op[0]);      //mov al op[0]
                 out[caddr++] = TO_CHAR(0xCD);
-                out[caddr++] = TO_CHAR(0x10);       //int 0x10
+                out[caddr++] = TO_CHAR(0x10);       //int 0x10  (displays ah)
                 spf = 0;
                 break;
             default: break; //used when spf = 0
         }
         if (op=="printchar"||op=="PRINTCHAR") {
             spf = 1;
+        }if (op=="getkey"||op=="GETKEY") {
+            out[caddr++] = TO_CHAR(0xB4);
+            out[caddr++] = TO_CHAR(0x00);       //mov ah 0x00
+            out[caddr++] = TO_CHAR(0xCD);
+            out[caddr++] = TO_CHAR(0x16);       //int 0x16   (reads keyboard into al)
+        }if (op=="restart"||op=="RESTART") {
+            out[caddr++] = TO_CHAR(0xEB);
+            out[caddr++] = TO_CHAR(-(caddr+1));
+
+
         }
     }
 
