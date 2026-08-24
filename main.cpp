@@ -44,6 +44,24 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
     int caddr = 0;          //current address for writing in output file
     int spf = 0;           //special operation flag, allows to treat operands as arguments instead of operations
 
+    //setting up stack and such (mandatory if i don't want crash)
+    out[caddr++] = TO_CHAR(0x66);
+    out[caddr++] = TO_CHAR(0xB8);
+    out[caddr++] = TO_CHAR(0x00);
+    out[caddr++] = TO_CHAR(0x00);
+    out[caddr++] = TO_CHAR(0x8E);
+    out[caddr++] = TO_CHAR(0xD8);
+    out[caddr++] = TO_CHAR(0x8E);
+    out[caddr++] = TO_CHAR(0xC0);
+    out[caddr++] = TO_CHAR(0x8E);
+    out[caddr++] = TO_CHAR(0xD0);
+    out[caddr++] = TO_CHAR(0x66);
+    out[caddr++] = TO_CHAR(0xBC);
+    out[caddr++] = TO_CHAR(0x00);
+    out[caddr++] = TO_CHAR(0x7C);
+
+
+
     for (const auto& op : opList) {
         switch (spf) {
             case 1:         //printchar
@@ -54,6 +72,16 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
                 out[caddr++] = TO_CHAR(0xCD);
                 out[caddr++] = TO_CHAR(0x10);       //int 0x10  (displays ah)
                 spf = 0;
+                break;
+            case 2:         //displaynum
+                out[caddr++] = TO_CHAR(0x04);
+                out[caddr++] = TO_CHAR(0x30);       //add al, 30
+                out[caddr++] = TO_CHAR(0xB4);
+                out[caddr++] = TO_CHAR(0x0E);
+                out[caddr++] = TO_CHAR(0xCD);
+                out[caddr++] = TO_CHAR(0x10);       //display
+                out[caddr++] = TO_CHAR(0x2C);
+                out[caddr++] = TO_CHAR(0x30);       //sub al, 30
                 break;
             default: break; //used when spf = 0
         }
@@ -66,9 +94,24 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
             out[caddr++] = TO_CHAR(0x16);       //int 0x16   (reads keyboard into al)
         }if (op=="restart"||op=="RESTART") {
             out[caddr++] = TO_CHAR(0xEB);
-            out[caddr++] = TO_CHAR(-(caddr+1));
-
-
+            out[caddr++] = TO_CHAR(-(caddr+1)); //jmp (-caddr+1)    (returns to start)
+        }if (op=="displaynum"||op=="DISPLAYNUM") {
+            spf = 2;
+        }if (op=="increment"||op=="INCREMENT") {
+            out[caddr++] = TO_CHAR(0xFE);
+            out[caddr++] = TO_CHAR(0xC0);
+        }if (op=="decrement"||op=="DECREMENT") {
+            out[caddr++] = TO_CHAR(0xFE);
+            out[caddr++] = TO_CHAR(0xC8);
+        }if (op=="display"||op=="DISPLAY") {    //printchar without changing al
+            out[caddr++] = TO_CHAR(0xB4);
+            out[caddr++] = TO_CHAR(0x0E);
+            out[caddr++] = TO_CHAR(0xCD);
+            out[caddr++] = TO_CHAR(0x10);
+        }if (op=="saveall"||op=="SAVEALL") {
+            out[caddr++] = TO_CHAR(0x60);
+        }if (op=="loadall"||op=="LOADALL") {
+            out[caddr++] = TO_CHAR(0x61);
         }
     }
 
