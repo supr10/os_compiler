@@ -2,6 +2,8 @@
  *OS Compiler
  *by Nolan Bazin (rguy83667@gmail.com)
  *
+ *PLEASE NOTE THAT THIS PROJECT IS STILL VERY MESSY AND THAT I WILL NOT BE ABLE TO SOLVE THEM FOR A SHORT WHILE.
+ *
  *Credits:
  *asciiart.eu for the ascii art
  */
@@ -10,7 +12,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <stdint.h>
 
 #define TO_CHAR(x) static_cast<char>(x)
 
@@ -28,39 +29,24 @@ static constexpr char build_type[] = "alpha";
 
 void invalidate(char* out) {
     //filling the whole out with zeroes
-    for (int i = 0;i<511;i++) {
+    for (int i = 0;i<512;i++) {
         out[i] = TO_CHAR(0x00);
     }
 }
 
 //The compile function transforms the source code (basic-type language) into a hex array
 static void compile(char* out, const std::vector<std::string>& opList) {            //assumes the out parameter is 512 bytes long
-    if constexpr (sizeof(out)!=512) {
-        std::cerr<<"out array too long"<<std::endl;
-    }
 
     invalidate(out);       //making sure the file is 512 bytes
 
-    int caddr = 0;          //current address for writing in output file
+    int caddr = 0;          //current address for writing in output file (0x7BFF so program starts at 0x7c00)
     int spf = 0;           //special operation flag, allows to treat operands as arguments instead of operations
 
-    //setting up stack and such (mandatory if i don't want crash)
-    out[caddr++] = TO_CHAR(0x66);
-    out[caddr++] = TO_CHAR(0xB8);
+    //4 free  bytes
     out[caddr++] = TO_CHAR(0x00);
     out[caddr++] = TO_CHAR(0x00);
-    out[caddr++] = TO_CHAR(0x8E);
-    out[caddr++] = TO_CHAR(0xD8);
-    out[caddr++] = TO_CHAR(0x8E);
-    out[caddr++] = TO_CHAR(0xC0);
-    out[caddr++] = TO_CHAR(0x8E);
-    out[caddr++] = TO_CHAR(0xD0);
-    out[caddr++] = TO_CHAR(0x66);
-    out[caddr++] = TO_CHAR(0xBC);
     out[caddr++] = TO_CHAR(0x00);
-    out[caddr++] = TO_CHAR(0x7C);
-
-
+    out[caddr++] = TO_CHAR(0x00);
 
     for (const auto& op : opList) {
         switch (spf) {
@@ -85,7 +71,7 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
                 break;
             default: break; //used when spf = 0
         }
-        if (op=="printchar"||op=="PRINTCHAR") {
+        if (op=="printchar"||op=="PRINTCHAR") { //prints given (next) character
             spf = 1;
         }if (op=="getkey"||op=="GETKEY") {
             out[caddr++] = TO_CHAR(0xB4);
@@ -95,9 +81,9 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
         }if (op=="restart"||op=="RESTART") {
             out[caddr++] = TO_CHAR(0xEB);
             out[caddr++] = TO_CHAR(-(caddr+1)); //jmp (-caddr+1)    (returns to start)
-        }if (op=="displaynum"||op=="DISPLAYNUM") {
+        }if (op=="displaynum"||op=="DISPLAYNUM") {  //(broken) displays al as a number
             spf = 2;
-        }if (op=="increment"||op=="INCREMENT") {
+        }if (op=="increment"||op=="INCREMENT") {    //increments/decrements al
             out[caddr++] = TO_CHAR(0xFE);
             out[caddr++] = TO_CHAR(0xC0);
         }if (op=="decrement"||op=="DECREMENT") {
@@ -108,10 +94,20 @@ static void compile(char* out, const std::vector<std::string>& opList) {        
             out[caddr++] = TO_CHAR(0x0E);
             out[caddr++] = TO_CHAR(0xCD);
             out[caddr++] = TO_CHAR(0x10);
-        }if (op=="saveall"||op=="SAVEALL") {
-            out[caddr++] = TO_CHAR(0x60);
-        }if (op=="loadall"||op=="LOADALL") {
-            out[caddr++] = TO_CHAR(0x61);
+        }if (op=="save"||op=="SAVE") {          //(broken) saves/loads al in ram
+            out[caddr++] = TO_CHAR(0xA2);
+            out[caddr++] = TO_CHAR(0x25);
+            out[caddr++] = TO_CHAR(0x50);
+            out[caddr++] = TO_CHAR(0x7C);
+            out[caddr++] = TO_CHAR(0x00);
+            out[caddr++] = TO_CHAR(0x00);
+        }if (op=="load"||op=="LOAD") {
+            out[caddr++] = TO_CHAR(0xA0);
+            out[caddr++] = TO_CHAR(0x25);
+            out[caddr++] = TO_CHAR(0x50);
+            out[caddr++] = TO_CHAR(0x7C);
+            out[caddr++] = TO_CHAR(0x00);
+            out[caddr++] = TO_CHAR(0x00);
         }
     }
 
@@ -156,10 +152,10 @@ int main(const int argc, char** argv) {
             return 0;
         }
         case 2: {
-            std::ofstream output("out.bin", std::ios::binary);
+            std::ofstream output("out.img", std::ios::binary);
             std::ifstream input(argv[1]);
             auto source = get_source_from_file(&input);
-            char out_hex[512];
+            char out_hex[32255];
             compile(out_hex, source);
             write_hex_file(&output, out_hex);
             input.close();
